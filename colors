@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+import sys
+from contextlib import contextmanager
+
+@contextmanager
+def EightBitColor(color):
+    sys.stdout.write(f"\033[48;5;{color}m")
+    yield
+    sys.stdout.write("\033[0m")
+
+@contextmanager
+def TrueColor(r, g, b):
+    sys.stdout.write(f"\033[48;2;{r};{g};{b}m")
+    yield
+    sys.stdout.write("\033[0m")
+
+if __name__ == "__main__":
+    o = sys.stdout.write
+
+    o("basic 16 ANSI colors\n")
+    for color in range(16):
+        with EightBitColor(color):
+            o(f"{color: >5} ")
+    sys.stdout.write("\n")
+
+    o("\nremaining entries in 256 color palette\n")
+    for colormajor in range(16, 256, 24):
+        for colorminor in range(24):
+            with EightBitColor(colormajor+colorminor):
+                o(f"{colorminor+colormajor:>3} ")
+        o("\n")
+
+    o("\nTrue color - sliced color cube\n")
+    for r in range(0, 256, 16):
+        for g in range(0, 256, 32):
+            for b in range(0, 256, 23):
+                with TrueColor(r, g, b):
+                    o(" ")
+        o("\n")
+
+    o("\nTrue color - primary colors\n")
+    for m in [ (0,0,1), (0,1,0), (0,1,1), (1,0,0), (1,0,1), (1,1,0), (1,1,1) ]:
+        for i in range(0, 256, 3):
+            with TrueColor(*((a * b) for a, b in zip(m, (i, i, i)))):
+                o(" ")
+        o("\n")
