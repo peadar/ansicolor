@@ -1,46 +1,79 @@
 #!/usr/bin/env python3
-import sys
+import sys, os, math
 from contextlib import contextmanager
+
+shown = 0
+def o(s):
+    global shown
+    sys.stdout.write(s)
+    shown += s.count("\n")
+
+STOP = "\033[0m"
 
 @contextmanager
 def EightBitColor(color):
-    sys.stdout.write(f"\033[48;5;{color}m")
+    o(f"\033[48;5;{color}m")
     yield
-    sys.stdout.write("\033[0m")
+    o(STOP)
 
 @contextmanager
 def TrueColor(r, g, b):
-    sys.stdout.write(f"\033[48;2;{r};{g};{b}m")
+    o(f"\033[48;2;{r};{g};{b}m")
     yield
-    sys.stdout.write("\033[0m")
+    o(STOP)
+
+try:
+    sz = os.get_terminal_size()
+    cols, rows = sz.columns, sz.lines
+except:
+    cols, rows = 80, 24
+
+def widthof(index, count):
+    per = cols / count
+    start = index * per
+    end = start + per
+    start = math.floor(start)
+    end = math.floor(end)
+    return int(end - start)
 
 if __name__ == "__main__":
-    o = sys.stdout.write
 
     o("basic 16 ANSI colors\n")
     for color in range(16):
         with EightBitColor(color):
-            o(f"{color: >5} ")
-    sys.stdout.write("\n")
-
-    o("\nremaining entries in 256 color palette\n")
+            o(f"{color :>{widthof(color,16)-1}} ")
+    o("\n\nremaining entries in 256 color palette\n")
     for colormajor in range(16, 256, 24):
         for colorminor in range(24):
             with EightBitColor(colormajor+colorminor):
-                o(f"{colorminor+colormajor:>3} ")
+                o(f"{colorminor+colormajor :>{widthof(colorminor,24)}}")
         o("\n")
 
-    o("\nTrue color - sliced color cube\n")
-    for r in range(0, 256, 16):
-        for g in range(0, 256, 32):
-            for b in range(0, 256, 23):
-                with TrueColor(r, g, b):
-                    o(" ")
-        o("\n")
-
+    colincr = 256 / cols
     o("\nTrue color - primary colors\n")
-    for m in [ (0,0,1), (0,1,0), (0,1,1), (1,0,0), (1,0,1), (1,1,0), (1,1,1) ]:
-        for i in range(0, 256, 3):
+    for m in [ (1,0,0), (0,1,0), (0,0,1), (1,1,0), (1,0,1), (0,1,1), (1,1,1) ]:
+        intensity = 0
+        while intensity <= 255:
+            i = int(intensity)
             with TrueColor(*((a * b) for a, b in zip(m, (i, i, i)))):
                 o(" ")
+            intensity += colincr
         o("\n")
+
+    cubelines = min(rows - 3 - shown, 16)
+
+    if cubelines > 10:
+        greenincr = colincr * 16
+        blueincr = 256/cubelines
+        blue = 0
+        o("\nTrue color - sliced color cube\n")
+        while blue <= 255:
+            red = 0
+            green = 0
+            while red <= 255:
+                with TrueColor( int(red) % 256, int(green) % 256, int(blue)%256):
+                    o(" ")
+                red += colincr
+                green += greenincr
+            o("\n")
+            blue += blueincr
