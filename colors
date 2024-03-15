@@ -9,12 +9,20 @@ def o(s):
     shown += s.count("\n")
 
 STOP = "\033[0m"
+CLS =  "\033[2J"
+HOME =  "\033[H"
 
 @contextmanager
 def EightBitColor(color):
     o(f"\033[48;5;{color}m")
     yield
     o(STOP)
+
+@contextmanager
+def AltScreen():
+    o(f"\033[?1049h")
+    yield
+    o(f"\033[?1049l")
 
 @contextmanager
 def TrueColor(r, g, b):
@@ -27,6 +35,7 @@ try:
     cols, rows = sz.columns, sz.lines
 except:
     cols, rows = 80, 24
+colincr = 256 / cols
 
 def widthof(index, count):
     per = cols / count
@@ -36,20 +45,19 @@ def widthof(index, count):
     end = math.floor(end)
     return int(end - start)
 
-if __name__ == "__main__":
-
-    o("basic 16 ANSI colors\n")
+def basic():
+    o("Basic 16 ANSI colors\n")
     for color in range(16):
         with EightBitColor(color):
             o(f"{color :>{widthof(color,16)-1}} ")
-    o("\n\nremaining entries in 256 color palette\n")
+    o("\n\nRemaining entries in 256 color palette\n")
     for colormajor in range(16, 256, 24):
         for colorminor in range(24):
             with EightBitColor(colormajor+colorminor):
                 o(f"{colorminor+colormajor :>{widthof(colorminor,24)}}")
         o("\n")
 
-    colincr = 256 / cols
+def primaries():
     o("\nTrue color - primary colors\n")
     for m in [ (1,0,0), (0,1,0), (0,0,1), (1,1,0), (1,0,1), (0,1,1), (1,1,1) ]:
         intensity = 0
@@ -60,8 +68,8 @@ if __name__ == "__main__":
             intensity += colincr
         o("\n")
 
+def cube():
     cubelines = min(rows - 3 - shown, 16)
-
     if cubelines > 10:
         greenincr = colincr * 16
         blueincr = 256/cubelines
@@ -77,3 +85,14 @@ if __name__ == "__main__":
                 green += greenincr
             o("\n")
             blue += blueincr
+
+def testChart():
+    basic()
+    primaries()
+    cube()
+
+if __name__ == "__main__":
+    with AltScreen():
+        o(CLS + HOME)
+        testChart()
+        sys.stdin.readline()
