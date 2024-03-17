@@ -61,6 +61,8 @@ def primaries():
     o("\nTrue color - primary colors\n")
     for m in [ (1,0,0), (0,1,0), (0,0,1), (1,1,0), (1,0,1), (0,1,1), (1,1,1) ]:
         intensity = 0
+        if shown >= rows - 1:
+            break
         while intensity <= 255:
             i = int(intensity)
             with TrueColor(*((a * b) for a, b in zip(m, (i, i, i)))):
