@@ -13,8 +13,14 @@ CLS =  "\033[2J"
 HOME =  "\033[H"
 
 @contextmanager
-def EightBitColor(color):
+def EightBitBackground(color):
     o(f"\033[48;5;{color}m")
+    yield
+    o(STOP)
+
+@contextmanager
+def EightBitForeground(color):
+    o(f"\033[38;5;{color}m")
     yield
     o(STOP)
 
@@ -37,28 +43,37 @@ except:
     cols, rows = 80, 24
 colincr = 256 / cols
 
-def widthof(index, count):
-    per = cols / count
+def cells(index, count, space):
+    # width of the Nth field of count. In theory, (index/count) * cols, but we need to distribute the fractional bits 
+    per = float(space) / count
     start = index * per
-    end = start + per
-    start = math.floor(start)
-    end = math.floor(end)
-    return int(end - start)
+    end = (index + 1) * per
+    return int ( math.floor(end) - math.floor(start) ) 
+
+def widthof(index, count):
+    return cells(index, count, cols)
+
+def heightof(index, count):
+    return cells(index, count, rows)
 
 def basic():
-    o("Basic 16 ANSI colors\n")
-    for color in range(16):
-        with EightBitColor(color):
-            o(f"{color :>{widthof(color,16)-1}} ")
-    o("\n\nRemaining entries in 256 color palette\n")
-    for colormajor in range(16, 256, 24):
-        for colorminor in range(24):
-            with EightBitColor(colormajor+colorminor):
-                o(f"{colorminor+colormajor :>{widthof(colorminor,24)}}")
+    o("Basic ANSI 16-color\n")
+    for ctx in ( EightBitForeground, EightBitBackground ):
+        # Show first 16 separately
+        for color in range(16):
+            with ctx(color):
+                o(f"{color :>{widthof(color,16)-1}} ")
         o("\n")
+    o("\nRemaining 8-bit color pallette\n")
+    for ctx in ( EightBitForeground, EightBitBackground ):
+        for colormajor in range(16, 256, 24):
+            for colorminor in range(24):
+                with ctx(colormajor+colorminor):
+                    o(f"{colorminor+colormajor :>{widthof(colorminor,24)}}")
+            o("\n")
 
 def primaries():
-    o("\nTrue color - primary colors\n")
+    o("\nTrue color - primaries\n")
     for m in [ (1,0,0), (0,1,0), (0,0,1), (1,1,0), (1,0,1), (0,1,1), (1,1,1) ]:
         intensity = 0
         if shown >= rows - 1:
@@ -71,22 +86,28 @@ def primaries():
         o("\n")
 
 def cube():
-    cubelines = min(rows - 3 - shown, 16)
-    if cubelines > 10:
-        greenincr = colincr * 16
-        blueincr = 256/cubelines
+    # We'll draw up to 16 lines in our cube.
+    cubelines = min(rows - 3 - shown, 24)
+
+    # but we want at least 11
+    if cubelines <= 10:
+        return
+
+    o("\nTrue color - color cube\n")
+    greenincr = colincr
+    blueincr = colincr * 8
+    redincr = 256/cubelines
+    red = 0
+    while red <= 255:
         blue = 0
-        o("\nTrue color - sliced color cube\n")
-        while blue <= 255:
-            red = 0
-            green = 0
-            while red <= 255:
-                with TrueColor( int(red) % 256, int(green) % 256, int(blue)%256):
-                    o(" ")
-                red += colincr
-                green += greenincr
-            o("\n")
+        green = 0
+        while green <= 255:
+            with TrueColor( int(red) % 256, int(green) % 256, int(blue)%256):
+                o(" ")
             blue += blueincr
+            green += greenincr
+        o("\n")
+        red += redincr
 
 def testChart():
     basic()
