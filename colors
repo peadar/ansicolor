@@ -3,18 +3,20 @@ import sys, os, math
 from contextlib import contextmanager
 import argparse
 import collections
+import colorsys
 
-shown = 0
+linesOutput = 0
 def o(s):
-    global shown
+    global linesOutput
     sys.stdout.write(s)
-    shown += s.count("\n")
+    linesOutput += s.count("\n")
 
-STOP = "\033[0m"
-CLS =  "\033[2J"
-HOME =  "\033[H"
+ESC = "\033"
+CSI = f"{ESC}["
+STOP = f"{CSI}0m"
+CLS =  f"{CSI}2J"
+HOME =  f"{CSI}H"
 
-args = None
 colincr = 0
 
 Args = collections.namedtuple( "Args", [ "rows", "cols", "noalt" ] )
@@ -22,27 +24,27 @@ args = Args( cols=80, rows=24, noalt=False )
 
 @contextmanager
 def EightBitBackground(color):
-    o(f"\033[48;5;{color}m")
+    o(f"{CSI}48;5;{color}m")
     yield
     o(STOP)
 
 @contextmanager
 def EightBitForeground(color):
-    o(f"\033[38;5;{color}m")
+    o(f"{CSI}38;5;{color}m")
     yield
     o(STOP)
 
 @contextmanager
 def AltScreen():
     if not args.noalt:
-        o(f"\033[?1049h")
+        o(f"{CSI}?1049h")
     yield
     if not args.noalt:
-        o(f"\033[?1049l")
+        o(f"{CSI}?1049l")
 
 @contextmanager
 def TrueColor(r, g, b):
-    o(f"\033[48;2;{r};{g};{b}m")
+    o(f"{CSI}48;2;{r};{g};{b}m")
     yield
     o(STOP)
 
@@ -79,7 +81,7 @@ def primaries():
     o("\nTrue color - primaries\n")
     for m in [ (1,0,0), (0,1,0), (0,0,1), (1,1,0), (1,0,1), (0,1,1), (1,1,1) ]:
         intensity = 0
-        if shown >= args.rows - 1:
+        if linesOutput >= args.rows - 1:
             break
         while intensity <= 255:
             i = int(intensity)
@@ -88,34 +90,22 @@ def primaries():
             intensity += colincr
         o("\n")
 
-def cube():
-    # We'll draw up to 24 lines in our cube.
-    cubelines = min(args.rows - 3 - shown, 24)
-
-    # but we want at least 11
-    if cubelines <= 10:
-        return
-
-    o("\nTrue color - color cube\n")
-    greenincr = colincr
-    blueincr = colincr * 8
-    redincr = 256/cubelines
-    red = 0
-    while red <= 255:
-        blue = 0
-        green = 0
-        while green <= 255:
-            with TrueColor( int(red) % 256, int(green) % 256, int(blue)%256):
-                o(" ")
-            blue += blueincr
-            green += greenincr
+def rainbow():
+    rainbowlines = min(args.rows - linesOutput - 2, 256)
+    o("Rainbow\n")
+    for row in range(rainbowlines):
+        for col in range(args.cols):
+            h = col / (args.cols)
+            v = row / rainbowlines
+            rgb = colorsys.hsv_to_rgb(h, 1.0, v)
+            with TrueColor( *(int(component * 255) for component in rgb )):
+               o(" ")
         o("\n")
-        red += redincr
 
 def testChart():
     basic()
     primaries()
-    cube()
+    rainbow()
 
 def main():
     global args, colincr
