@@ -92,12 +92,24 @@ def primaries():
 
 def rainbow():
     rainbowlines = min(args.rows - linesOutput - 2, 256)
+    if rainbowlines < 2:
+        return
     o("Rainbow\n")
+    # On each line, go from h=0 to h=1.0
+    # For half the lines, use s=1, and spread v over the range
+    # For the other half, use v=1, and spread s over the range, backwards, so
+    # it's less visually jarring.
     for row in range(rainbowlines):
         for col in range(args.cols):
             h = col / (args.cols)
-            v = row / rainbowlines
-            rgb = colorsys.hsv_to_rgb(h, 1.0, v)
+            if row < rainbowlines / 2:
+                s = 1.0
+                v = row / (rainbowlines / 2)
+            else:
+                v = 1.0
+                s = 1.0 - (row - rainbowlines / 2) / (rainbowlines / 2)
+
+            rgb = colorsys.hsv_to_rgb(h, s, v)
             with TrueColor( *(int(component * 255) for component in rgb )):
                o(" ")
         o("\n")
