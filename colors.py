@@ -13,16 +13,11 @@ def o(s):
 
 ESC = "\033"
 CSI = f"{ESC}["
-DCS = f"{ESC}P"
-SPA = f"{ESC}V"
-EPA = f"{ESC}W"
-SOS = f"{ESC}X"
-ST = f"{ESC}\\"
-OSC = f"{ESC}]"
-RTI = f"{ESC}Z"
 STOP = f"{CSI}0m"
 CLS =  f"{CSI}2J"
 HOME =  f"{CSI}H"
+
+colincr = 0
 
 Args = collections.namedtuple( "Args", [ "rows", "cols", "noalt" ] )
 args = Args( cols=80, rows=24, noalt=False )
@@ -48,7 +43,7 @@ def AltScreen():
         o(f"{CSI}?1049l")
 
 @contextmanager
-def TrueColorBackground(r, g, b):
+def TrueColor(r, g, b):
     o(f"{CSI}48;2;{r};{g};{b}m")
     yield
     o(STOP)
@@ -83,40 +78,27 @@ def basic():
             o("\n")
 
 def primaries():
-    if args.rows - linesOutput < 10:
-        return
     o("\nTrue color - primaries\n")
     for m in [ (1,0,0), (0,1,0), (0,0,1), (1,1,0), (1,0,1), (0,1,1), (1,1,1) ]:
+        intensity = 0
         if linesOutput >= args.rows - 1:
             break
-        for col in range(args.cols):
-            intensity = int((col + 0.5) * 256 / args.cols)
-            assert intensity < 256
-            with TrueColorBackground(*((a * b) for a, b in zip(m, (intensity, intensity, intensity)))):
+        while intensity <= 255:
+            i = int(intensity)
+            with TrueColor(*((a * b) for a, b in zip(m, (i, i, i)))):
                 o(" ")
+            intensity += colincr
         o("\n")
 
 def rainbow():
-    rainbowlines = min(args.rows - linesOutput - 3, 256)
-    if rainbowlines < 1:
-        return
-    o("\nTrue color - rainbow\n")
-
-    # On each line, go from h=0 to h=1.0
-    # For half the lines, use s=1, and spread v over the range
-    # For the other half, use v=1, and spread s over the range, backwards, so
-    # it's less visually jarring.
+    rainbowlines = min(args.rows - linesOutput - 2, 256)
+    o("Rainbow\n")
     for row in range(rainbowlines):
-        if row < rainbowlines / 2:
-            s = 1.0
-            v = ( row + 0.5 ) / (rainbowlines / 2)
-        else:
-            v = 1.0
-            s = 1.0 - (row + 0.5 - rainbowlines / 2) / (rainbowlines / 2)
         for col in range(args.cols):
             h = col / (args.cols)
-            rgb = colorsys.hsv_to_rgb(h, s, v)
-            with TrueColorBackground( *(int(component * 255) for component in rgb )):
+            v = row / rainbowlines
+            rgb = colorsys.hsv_to_rgb(h, 1.0, v)
+            with TrueColor( *(int(component * 255) for component in rgb )):
                o(" ")
         o("\n")
 
@@ -126,7 +108,7 @@ def testChart():
     rainbow()
 
 def main():
-    global args
+    global args, colincr
     argp = argparse.ArgumentParser()
     try:
         sz = os.get_terminal_size()
@@ -138,6 +120,7 @@ def main():
     argp.add_argument("--noalt", action='store_true', default=not sys.stdout.isatty())
     args = argp.parse_args()
 
+    colincr = 256 / args.cols
     with AltScreen():
         if not args.noalt:
             o(CLS + HOME)
